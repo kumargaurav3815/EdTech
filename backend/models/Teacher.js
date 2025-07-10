@@ -7,6 +7,7 @@ const assignmentSchema = new mongoose.Schema({
   description: String,
   dueDate: Date,
   createdAt: { type: Date, default: Date.now },
+  upload: String,
 });
 
 const quizSchema = new mongoose.Schema({
@@ -22,17 +23,29 @@ const quizSchema = new mongoose.Schema({
 
 const classSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
+    // title: { type: String, required: true },
+    // date: Date,
+    // duration: Number,
+    // meetingLink: String,
+    // classId: String,
+    // description: String,
+    // videoLink: String,
+    // schedule: String,
+    // enrolledStudents: [
+    //   { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+    // ],
+    // assignments: [assignmentSchema],
+    // quizzes: [quizSchema],
+    _id: mongoose.Schema.Types.ObjectId,
+    title: String,
     description: String,
     videoLink: String,
-    schedule: String,
-    enrolledStudents: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
-    ],
+    date: Date,
+    duration: Number,
+    enrolledStudents: [mongoose.Schema.Types.ObjectId],
     assignments: [assignmentSchema],
-    quizzes: [quizSchema],
-  },
-  { _id: true, timestamps: true }
+  }
+  // { _id: true, timestamps: true }
 );
 
 const teacherSchema = new mongoose.Schema({
@@ -40,6 +53,7 @@ const teacherSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   classes: [classSchema],
+  assignments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Assignment" }],
 });
 
 export default mongoose.models.Teacher ||

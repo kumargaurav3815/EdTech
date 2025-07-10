@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "../api";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
+import { motion as Motion } from "framer-motion";
 
 export default function TeacherRecords() {
   const [students, setStudents] = useState([]);
@@ -26,24 +27,40 @@ export default function TeacherRecords() {
   return (
     <>
       <Navbar />
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-4">Enrolled Students</h2>
-        {students.length === 0 ? (
-          <p className="text-gray-500">No students found.</p>
-        ) : (
-          <ul className="space-y-3">
-            {students.map((s) => (
-              <li
-                key={s._id}
-                onClick={() => navigate(`/teacher/records/${s._id}`)}
-                className="border p-4 rounded shadow cursor-pointer hover:bg-gray-100 transition">
-                <p className="font-semibold">{s.name}</p>
-                <p className="text-sm text-gray-600">{s.email}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <Motion.div
+        className="min-h-screen lg:h-screen lg:overflow-hidden overflow-auto bg-gradient-to-br from-sky-100 to-pink-100 px-4 py-10 flex items-start justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}>
+        <Motion.div
+          className="w-full max-w-3xl bg-white/70 backdrop-blur-lg border border-gray-200 shadow-xl rounded-3xl p-6 space-y-6"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4 }}>
+          <h2 className="text-3xl font-bold text-blue-700 text-center">
+            👨‍🎓 Enrolled Students
+          </h2>
+
+          {students.length === 0 ? (
+            <p className="text-gray-600 text-center">No students found.</p>
+          ) : (
+            <ul className="space-y-4">
+              {students.map((s, index) => (
+                <Motion.li
+                  key={s._id}
+                  onClick={() => navigate(`/teacher/records/${s._id}`)}
+                  className="cursor-pointer bg-white border border-gray-300 hover:bg-blue-50 p-4 rounded-xl shadow-md transition-all"
+                  whileHover={{ scale: 1.02 }}>
+                  <p className="font-semibold text-lg text-blue-900">
+                    {index + 1}. {s.name}
+                  </p>
+                  <p className="text-sm text-gray-600">{s.email}</p>
+                </Motion.li>
+              ))}
+            </ul>
+          )}
+        </Motion.div>
+      </Motion.div>
     </>
   );
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import axios from "../api";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
+import { motion as Motion } from "framer-motion";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function CreateAssignment() {
   const [classes, setClasses] = useState([]);
@@ -13,6 +15,7 @@ export default function CreateAssignment() {
     description: "",
     dueDate: "",
   });
+  const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -22,16 +25,19 @@ export default function CreateAssignment() {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       .then((res) => setClasses(res.data))
-      .catch(() => alert("Failed to load classes"));
+      .catch(() => toast.error("Failed to load classes"));
   }, []);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 📅 Due Date Validation
     const today = new Date().setHours(0, 0, 0, 0);
     const selected = new Date(form.dueDate).setHours(0, 0, 0, 0);
     if (selected < today) {
@@ -40,101 +46,134 @@ export default function CreateAssignment() {
     }
 
     setError("");
+
     try {
-      console.log("Form submission data:", form);
-      await axios.post("/assignment/create", form, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const fd = new FormData();
+      fd.append("classId", form.classId);
+      fd.append("title", form.title);
+      fd.append("description", form.description);
+      fd.append("dueDate", form.dueDate);
+      if (file) fd.append("file", file);
+
+      const res = await axios.post("/assignment/create", fd, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
-      navigate(`/class/${form.classId}/assignments`);
+
+      toast.success(`✅ ${res.data.message}`);
+      setTimeout(() => navigate(`/class/${form.classId}/assignments`), 1500);
     } catch (err) {
-      console.error("Assignment creation error:", err);
-      alert("Failed to create assignment");
+      console.error(err);
+      toast.error("❌ Failed to create assignment");
     }
   };
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-50 py-10 px-4">
-        <div className="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-3xl font-bold text-blue-700 mb-6 text-center">
-            Create New Assignment
+      <Toaster position="top-right" />
+      <Motion.div
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 to-pink-100 px-4 py-12"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}>
+        <Motion.form
+          onSubmit={handleSubmit}
+          className="bg-white w-full max-w-xl p-8 rounded-3xl shadow-xl border border-gray-200 space-y-6"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4 }}>
+          <h2 className="text-3xl font-bold text-center text-blue-600">
+            📝 Create New Assignment
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Select Class
-              </label>
-              <select
-                name="classId"
-                onChange={handleChange}
-                required
-                className="w-full border px-3 py-2">
-                <option value="">-- Select --</option>
-                {classes.map((cls) => (
-                  <option key={cls._id} value={cls._id}>
-                    {cls.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block mb-1 font-medium text-sm">
+              Select Class
+            </label>
+            <select
+              name="classId"
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">-- Select --</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.title}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Assignment Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                required
-                value={form.title}
-                onChange={handleChange}
-                placeholder="Enter title"
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block mb-1 font-medium text-sm">
+              Assignment Title
+            </label>
+            <input
+              type="text"
+              name="title"
+              required
+              value={form.title}
+              onChange={handleChange}
+              placeholder="e.g. Unit 1 Worksheet"
+              className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                required
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Assignment details..."
-                rows={4}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block mb-1 font-medium text-sm">
+              Description
+            </label>
+            <textarea
+              name="description"
+              required
+              value={form.description}
+              onChange={handleChange}
+              placeholder="Assignment details..."
+              rows={4}
+              className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Due Date
-              </label>
-              <input
-                type="date"
-                name="dueDate"
-                required
-                value={form.dueDate}
-                min={new Date().toISOString().split("T")[0]} // today onwards
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block mb-1 font-medium text-sm">Due Date</label>
+            <input
+              type="date"
+              name="dueDate"
+              required
+              value={form.dueDate}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+          <div>
+            <label className="block mb-1 font-medium text-sm">
+              Upload Assignment Questions (optional)
+            </label>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.png,.jpg"
+              onChange={handleFileChange}
+              className="w-full px-4 py-2 border rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Accepted formats: PDF, DOCX, JPG, PNG
+            </p>
+          </div>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">
-              Create Assignment
-            </button>
-          </form>
-        </div>
-      </div>
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-xl shadow-lg font-semibold transition-all duration-300 hover:cursor-pointer">
+            ➕ Create Assignment
+          </button>
+        </Motion.form>
+      </Motion.div>
     </>
   );
 }

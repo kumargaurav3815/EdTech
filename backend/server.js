@@ -6,8 +6,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
-
-// Route imports
+import path from "path";
 import authRoutes from "./routes/auth.js";
 import classRoutes from "./routes/class.js";
 import quizRoutes from "./routes/quiz.js";
@@ -58,7 +57,11 @@ app.use("/api/quiz-submissions", quizSubmissionRoutes);
 app.use("/api/assignment-submissions", assignmentSubmissionRoutes);
 app.use("/api/records", recordRoutes);
 app.use("/api/teacher", teacherRoutes);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// =====================
+// 💬 Socket.IO Events
+// =====================
 // =====================
 // 💬 Socket.IO Events
 // =====================
@@ -68,6 +71,62 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+});
+
+const roomMembers = {}; // Global map: { roomId: [ { socketId, name } ] }
+
+io.on("connection", (socket) => {
+  console.log(`⚡ Client connected: ${socket.id}`);
+
+  socket.on("joinRoom", ({ roomId, name }) => {
+    socket.join(roomId);
+    console.log(`✅ ${name} joined room: ${roomId}`);
+
+    // Store peer in memory
+    if (!roomMembers[roomId]) roomMembers[roomId] = [];
+    roomMembers[roomId].push({ socketId: socket.id, name });
+
+    // Send existing users to new joiner
+    const usersInRoom = roomMembers[roomId].filter(
+      (user) => user.socketId !== socket.id
+    );
+    socket.emit("allUsers", usersInRoom);
+
+    // Notify existing users
+    socket.to(roomId).emit("userJoined", { userId: socket.id, name });
+  });
+
+  socket.on("signal", ({ target, signal }) => {
+    io.to(target).emit("signal", { from: socket.id, signal });
+  });
+
+  socket.on("chatMessage", ({ roomId, sender, message, time }) => {
+    io.to(roomId).emit("chatMessage", {
+      sender,
+      message,
+      time:
+        time ||
+        new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }),
+    });
+  });
+
+  socket.on("leaveRoom", ({ roomId, role }) => {
+    socket.leave(roomId);
+    console.log(`👋 ${role} left room: ${roomId}`);
+    socket.to(roomId).emit("userLeft", { role });
+
+    if (roomMembers[roomId]) {
+      roomMembers[roomId] = roomMembers[roomId].filter(
+        (user) => user.socketId !== socket.id
+      );
+      if (roomMembers[roomId].length === 0) delete roomMembers[roomId];
+    }
+  });
 });
 
 // Inside io.on("connection", ...)
@@ -97,19 +156,6 @@ io.on("connection", (socket) => {
       };
       io.to(roomId).emit("chatMessage", payload);
     }
-  });
-
-  // 🔄 Socket.IO Leave Event
-  socket.on("leaveRoom", ({ roomId, role }) => {
-    if (roomId && role) {
-      socket.leave(roomId);
-      console.log(`👋 ${role} left room: ${roomId}`);
-      socket.to(roomId).emit("userLeft", { role });
-    }
-  });
-
-  socket.on("disconnect", () => {
-    console.log(`❌ Disconnected: ${socket.id}`);
   });
 });
 

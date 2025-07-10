@@ -8,8 +8,23 @@ import Teacher from "../models/Teacher.js";
 import mongoose from "mongoose";
 
 export const createClass = async (req, res) => {
-  const { title, description, videoLink } = req.body;
+  const { title, description, videoLink, date, duration } = req.body;
   const teacherId = req.user.id;
+
+  if (!title || !description || !date || !duration) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const parsedDate = new Date(date);
+  const parsedDuration = Number(duration);
+
+  if (isNaN(parsedDate.getTime())) {
+    return res.status(400).json({ message: "Invalid date format" });
+  }
+
+  if (isNaN(parsedDuration)) {
+    return res.status(400).json({ message: "Invalid duration" });
+  }
 
   const teacher = await Teacher.findById(teacherId);
   if (!teacher) return res.status(404).json({ message: "Teacher not found" });
@@ -19,6 +34,8 @@ export const createClass = async (req, res) => {
     title,
     description,
     videoLink,
+    date: parsedDate,
+    duration: parsedDuration,
     enrolledStudents: [],
   };
 
@@ -229,7 +246,6 @@ export const deleteClass = async (req, res) => {
   res.json({ message: "Class deleted successfully" });
 };
 
-//reschedule class
 export const updateClass = async (req, res) => {
   const { id } = req.params;
   const { title, description, videoLink } = req.body;
